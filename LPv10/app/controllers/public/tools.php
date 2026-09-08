@@ -1,0 +1,1 @@
+<?php require LB_ROOT.'/app/views/public/tools.php';

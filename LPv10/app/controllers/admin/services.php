@@ -1,0 +1,30 @@
+<?php
+requireAdmin();$pdo=db();$p=pfx();$user=currentUser();$activePage='services';$pageTitle='Services';
+if($_SERVER['REQUEST_METHOD']==='POST'&&verifyCsrf()){
+    $a=$_POST['action']??'';$id=(int)($_POST['id']??0);
+    if($a==='save'){$d=[$_POST['name'],$_POST['type'],$_POST['niche']??'',$_POST['description']??'',(int)$_POST['min_da'],(int)$_POST['min_dr'],(int)$_POST['turnaround_days'],(float)$_POST['price'],$_POST['sale_price']?(float)$_POST['sale_price']:null,(int)$_POST['is_featured'],(int)$_POST['status'],(int)($_POST['sort_order']??0)];
+    if($id)$pdo->prepare("UPDATE `{$p}services` SET name=?,type=?,niche=?,description=?,min_da=?,min_dr=?,turnaround_days=?,price=?,sale_price=?,is_featured=?,status=?,sort_order=?,updated_at=NOW() WHERE id=?")->execute(array_merge($d,[$id]));
+    else $pdo->prepare("INSERT INTO `{$p}services`(name,type,niche,description,min_da,min_dr,turnaround_days,price,sale_price,is_featured,status,sort_order,created_at)VALUES(?,?,?,?,?,?,?,?,?,?,?,?,NOW())")->execute($d);
+    redirect('/admin/services');}
+    if($a==='delete'){$pdo->prepare("DELETE FROM `{$p}services` WHERE id=?")->execute([$id]);redirect('/admin/services');}
+}
+try{$services=$pdo->query("SELECT * FROM `{$p}services` ORDER BY sort_order,name")->fetchAll();}catch(Exception $e){$services=[];}
+ob_start();?>
+<div class="ph"><div><div class="pt">Services</div></div><button class="btn bp" onclick="document.getElementById('smid').value=0;document.getElementById('smform').reset();oM('smo')">+ New Service</button></div>
+<div class="panel"><div class="tw"><table><thead><tr><th>NAME</th><th>TYPE</th><th>DA/DR</th><th>PRICE</th><th>DAYS</th><th>FEAT</th><th>STATUS</th><th>ACTIONS</th></tr></thead><tbody>
+<?php foreach($services as $s):?><tr>
+<td class="tdp"><?=e($s['name'])?></td><td class="tdm"><?=e(str_replace('_',' ',$s['type']))?></td>
+<td class="tdm">DA<?=(int)$s['min_da']?>+ DR<?=(int)$s['min_dr']?>+</td>
+<td style="color:var(--acid);font-weight:700"><?=moneyFmt($s['price'])?></td>
+<td class="tdm"><?=(int)$s['turnaround_days']?>d</td>
+<td><?=$s['is_featured']?'<span style="color:var(--acid)">★</span>':'—'?></td>
+<td><?=badge($s['status']?'active':'inactive')?></td>
+<td><div class="tda"><button class="btn bs bxs" onclick="editSvc(<?=htmlspecialchars(json_encode($s),ENT_QUOTES)?>)">Edit</button>
+<form method="post" style="display:inline" onsubmit="return confirm('Delete?')"><input type="hidden" name="_token" value="<?=e(csrf())?>"><input type="hidden" name="action" value="delete"><input type="hidden" name="id" value="<?=(int)$s['id']?>"><button class="btn bd bxs">✕</button></form>
+</div></td></tr>
+<?php endforeach;if(empty($services)):?><tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--mist)">No services</td></tr><?php endif;?>
+</tbody></table></div></div>
+<?php $pageContent=ob_get_clean();
+$modals='<div class="mo" id="smo"><div class="mw mwl"><div class="mh"><div class="mt" id="smtitle">New Service</div><button class="mc" onclick="cM(\'smo\')">✕</button></div><div class="mb"><form method="post" id="smform"><input type="hidden" name="_token" value="'.csrf().'"><input type="hidden" name="action" value="save"><input type="hidden" name="id" id="smid" value="0"><div style="display:grid;grid-template-columns:1fr 1fr;gap:.7rem"><div class="fg"><label class="fl">NAME</label><input type="text" name="name" id="sm_n" class="fc" required></div><div class="fg"><label class="fl">TYPE</label><select name="type" id="sm_t" class="fc"><option value="guest_post">Guest Post</option><option value="niche_edit">Niche Edit</option><option value="homepage_link">Homepage Link</option><option value="package">Package</option></select></div><div class="fg"><label class="fl">NICHE</label><input type="text" name="niche" id="sm_ni" class="fc"></div><div class="fg"><label class="fl">SORT ORDER</label><input type="number" name="sort_order" id="sm_so" class="fc" value="0"></div><div class="fg"><label class="fl">MIN DA</label><input type="number" name="min_da" id="sm_da" class="fc" value="0" min="0" max="100"></div><div class="fg"><label class="fl">MIN DR</label><input type="number" name="min_dr" id="sm_dr" class="fc" value="0" min="0" max="100"></div><div class="fg"><label class="fl">PRICE</label><input type="number" name="price" id="sm_p" class="fc" step="0.01" required></div><div class="fg"><label class="fl">SALE PRICE</label><input type="number" name="sale_price" id="sm_sp" class="fc" step="0.01"></div><div class="fg"><label class="fl">TURNAROUND DAYS</label><input type="number" name="turnaround_days" id="sm_td" class="fc" value="7"></div><div class="fg"><label class="fl">STATUS</label><select name="status" id="sm_st" class="fc"><option value="1">Active</option><option value="0">Inactive</option></select></div><div class="fg"><label class="fl">FEATURED</label><select name="is_featured" id="sm_f" class="fc"><option value="0">No</option><option value="1">Yes</option></select></div></div><div class="fg"><label class="fl">DESCRIPTION</label><textarea name="description" id="sm_d" class="fc" rows="3"></textarea></div><div class="mf"><button type="button" class="btn bs" onclick="cM(\'smo\')">Cancel</button><button type="submit" class="btn bp">Save</button></div></form></div></div></div>';
+$js='<script>function editSvc(s){document.getElementById("smtitle").textContent="Edit Service";document.getElementById("smid").value=s.id;document.getElementById("sm_n").value=s.name||"";document.getElementById("sm_t").value=s.type||"guest_post";document.getElementById("sm_ni").value=s.niche||"";document.getElementById("sm_da").value=s.min_da||0;document.getElementById("sm_dr").value=s.min_dr||0;document.getElementById("sm_p").value=s.price||"";document.getElementById("sm_sp").value=s.sale_price||"";document.getElementById("sm_td").value=s.turnaround_days||7;document.getElementById("sm_st").value=s.status;document.getElementById("sm_f").value=s.is_featured;document.getElementById("sm_so").value=s.sort_order||0;document.getElementById("sm_d").value=s.description||"";oM("smo");}</script>';
+include LB_ROOT.'/app/views/layouts/admin_wrap.php';

@@ -1,0 +1,22 @@
+Options -Indexes
+Options +FollowSymLinks
+RewriteEngine On
+RewriteBase /
+
+# Block sensitive paths
+RewriteRule ^\.env$ - [F,L]
+RewriteRule ^storage/ - [F,L]
+RewriteRule ^app/ - [F,L]
+RewriteRule ^cron/ - [F,L]
+
+# Allow assets
+RewriteRule ^assets/ - [L]
+
+# Dynamic sitemap & robots
+RewriteRule ^sitemap\.xml$ index.php [QSA,L]
+RewriteRule ^robots\.txt$ index.php [QSA,L]
+
+# Route everything else
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ index.php [QSA,L]
